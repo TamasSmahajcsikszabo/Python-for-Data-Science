@@ -29,3 +29,44 @@ contents = !ls
 print(contents)
 type(contents)
 
+# toggle automagic functions
+%automagic
+
+pwd
+ls
+cat chapter1.py
+mkdir tmp
+cd tmp
+rm -r tmp
+%cd ..
+
+## errors and debugging
+# exception mode toggle
+%xmode
+
+def func(a,b,):
+    return a / b
+
+def func2(x):
+    a = x
+    b = x-1
+    return a / b
+
+
+%xmode Minimal
+func2(1)
+
+# debuggin
+# the standard Python debuggin tool is pdb
+# Ipyton has its own ipdb
+func2(1)
+%debug
+
+# profiling and timing code
+%timeit sum(range(1,100))
+
+%%timeit
+total = 0
+for i in range(1000):
+    for j in range(1000):
+        total += i * (-1) ** j
