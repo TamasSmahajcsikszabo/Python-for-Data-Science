@@ -10,7 +10,6 @@ print("ndim: ", x1.ndim)
 print("shape: ", x1.shape)
 print("size: ", x1.size)
 
-
 def get_attr(ids):
     """ gets numpy array attributes"""
     for i in range(0, len(ids)):
