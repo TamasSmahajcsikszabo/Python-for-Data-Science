@@ -63,12 +63,14 @@ array_sub = array[:3, :2].copy()
 array = np.arange(1, 11)
 array.reshape(5, 2)
 array[np.newaxis, 5:]
+array[:, np.newaxis]
 
 # concatenation
 np.random.seed(12)
 a1 = np.random.randint(10, size=(2, 2))
 a2 = np.random.randint(10, size=(2, 2))
 np.concatenate((a1, a2), axis=1)
+np.concatenate((a1, a2), axis=0)
 
 # for arrays with different dimensions, stacking is advised
 b1 = np.array([1, 2, 3])
@@ -78,7 +80,9 @@ np.vstack([b1, b2])
 b3 = np.array([[88], [88]])
 np.hstack([b2, b3])
 
+# dstack concatenates along the third axis
 np.dstack([b2, b2])
+
 # splitting arrays
 array = np.arange(16).reshape(4, 4)
 
