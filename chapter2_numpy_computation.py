@@ -49,4 +49,41 @@ print(z)
 # aggregates
 # reduce
 np.add.reduce(x)
-np.add.accumulate(x) # stores intermediate steps
+np.add.accumulate(x) # stores intermediate steps (results)
+
+#summary functions
+L = np.random.random(100)
+sum(L)
+np.sum(L)
+
+big_array = np.random.random(1000000)
+%timeit sum(big_array)
+%timeit np.sum(big_array)
+
+%timeit min(big_array)
+%timeit np.min(big_array)
+
+#the same we can compute max functions
+
+# Operations alongside axis
+d = np.random.random((3, 4))
+np.max(d, axis=0) #rowwise
+np.max(d, axis=1) #columnwise
+
+# case study
+import pandas as pd
+data = pd.read_csv('~/repos/PythonDataScienceHandbook/notebooks/data/president_heights.csv')
+heights = np.array(data['height(cm)'])
+print('Mean height', np.mean(heights))
+print('st. dev. of height', np.std(heights))
+print('Min height', np.min(heights))
+print('Max height', np.max(heights))
+print('25th percentile height', np.percentile(heights, 25))
+print('Median height', np.median(heights))
+print('75th percentile height', np.percentile(heights, 75))
+
+import matplotlib.pyplot as plt
+import seaborn; seaborn.set()
+
+plt.hist(heights)
+plt.show()
