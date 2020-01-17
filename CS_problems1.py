@@ -105,7 +105,7 @@ class compressed_gene:
             elif bits == 0b01:
                 gene += "C"
             elif bits == 0b10:
-                gene += "A"
+                gene += "G"
             elif bits == 0b11:
                 gene += "T"
             else:
@@ -119,6 +119,6 @@ class compressed_gene:
     original: str =  "TAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATATAGGGATTAACCGTTATATATATATATCCATGGATCGATTATA" * 100
     print("original is {} bytes".format(getsizeof(original)))
     compressed: compressed_gene =  compressed_gene(original)
-    print("Compressed is {} bytes".format(getsizeof(compressed.bit_string())))
+    print("Compressed is {} bytes".format(getsizeof(compressed.bit_string)))
     print(compressed)
     print("original and decompressed are the same: {}".format(original == compressed.decompress()))
