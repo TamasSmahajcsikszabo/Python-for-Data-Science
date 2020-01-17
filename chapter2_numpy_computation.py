@@ -86,4 +86,5 @@ import matplotlib.pyplot as plt
 import seaborn; seaborn.set()
 
 plt.hist(heights)
-plt.show()
+plt.show(block=True)
+
