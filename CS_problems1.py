@@ -73,7 +73,7 @@ def fib6(n: int) -> Generator[int, None, None]:
     next: int = 1
     for _ in range(1, n):
         last, next = next, last + next
-        yield next 
+        yield next
 
 for i in fib6(50):
     print(i)
@@ -118,7 +118,7 @@ class compressed_gene:
     from sys import getsizeof
     original: str =  "TAGGGATTAACCGTTATATATATATAGCCATGGATCGATTATATAGGGATTAACCGTTATATATATATATCCATGGATCGATTATA" * 100
     print("original is {} bytes".format(getsizeof(original)))
-    compressed: compressed_gene =  compressed_gene(original)
+    compressed: compressed_gene = compressed_gene(original)
     print("Compressed is {} bytes".format(getsizeof(compressed.bit_string)))
     print(compressed)
     print("original and decompressed are the same: {}".format(original == compressed.decompress()))
