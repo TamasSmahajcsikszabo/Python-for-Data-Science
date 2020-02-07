@@ -110,5 +110,32 @@ c.data = 'tre'
 # supports more general iteration contexts than getitem()
 # when no iteration protocol defined, Python falls back to getitem and does repeated indexing
 
-for i in Squares(1, 5):
+for i in Squares(2, 5):
+    print(i, end=' ')
+
+sq = Squares(1, 4)
+iter(sq)
+next(sq)
+
+# squares is in this form a one-shot iterator, turning into a list save this, but at a performance cost
+X = Squares(1, 5)
+tuple(X), tuple(X)  # by the second call, it's already empty
+
+X = list(Squares(1, 5))
+# by the second call, it's still the same list, can be iterated again
+tuple(X), tuple(X)
+
+# the same solution with generator functions or expressions
+# NOTE
+# they automatically produce iterable objects and retain local vaiable state between iterations
+
+
+def sqr(start, stop):
+    for i in range(start, stop + 1):
+        yield i**2
+
+
+list(sqr(1, 3))
+
+for i in (i**2 for i in range(1, 4)):
     print(i, end=' ')
