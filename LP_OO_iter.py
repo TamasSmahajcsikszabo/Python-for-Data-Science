@@ -139,3 +139,35 @@ list(sqr(1, 3))
 
 for i in (i**2 for i in range(1, 4)):
     print(i, end=' ')
+
+# single vs. multiple scans with classes
+# to achieve multiple class iter() should not  return self
+# rather it needs to define a new stateful object for the iterator
+
+
+class SkipObject:
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    def __iter__(self):
+        return SkipIterator(self.wrapped)
+
+
+class SkipIterator():
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        self.offset = 0
+
+    def __next__(self):
+        if self.offset >= len(self.wrapped):
+            raise StopIteration
+        else:
+            item = self.wrapped[self.offset]
+            self.offset += 2
+            return item
+
+
+alpha = 'abcdef'
+skipper = SkipObject(alpha)
+I = iter(skipper)
+print(next(I), next(I), next(I))
