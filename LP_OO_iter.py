@@ -171,3 +171,8 @@ alpha = 'abcdef'
 skipper = SkipObject(alpha)
 I = iter(skipper)
 print(next(I), next(I), next(I))
+
+# test multiple scans of objects created as classes
+for x in skipper:
+    for y in skipper:
+        print(x + y, end=' ')
