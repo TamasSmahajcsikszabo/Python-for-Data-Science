@@ -178,6 +178,7 @@ for x in skipper:
         print(x + y, end=' ')
 
 # iter() with yield generator function
+# it supports multiple iterations
 
 
 class Squares:
@@ -188,3 +189,28 @@ class Squares:
     def __iter__(self):
         for value in range(self.start, self.stop + 1):
             yield value**2
+
+
+S = Squares(1, 5)
+I = iter(S)
+iter(I), iter(I), iter(I)
+next(I), next(I), next(I)
+
+# to reproduce multiple scan iteration without yield:
+
+
+class Squares:
+    def __init__(self, start, stop):
+        self.start = start
+        self.stop = stop
+
+    def __iter__(self):
+        return SquaresIter(self.start, self.stop)
+
+
+class SquaresIter:
+    def __init__(self, start, stop):
+        self.value = start - 1
+        self.stop = stop
+
+    def __next__(self):
