@@ -56,6 +56,9 @@ L = np.random.random(100)
 sum(L)
 np.sum(L)
 
+%timeit print(sum(L))
+%timeit print(np.sum(L))
+
 big_array = np.random.random(1000000)
 %timeit sum(big_array)
 %timeit np.sum(big_array)
@@ -70,9 +73,12 @@ d = np.random.random((3, 4))
 np.max(d, axis=0) #rowwise
 np.max(d, axis=1) #columnwise
 
+
 # case study
 import pandas as pd
 data = pd.read_csv('~/repos/PythonDataScienceHandbook/notebooks/data/president_heights.csv')
+!head -4 ~/repos/PythonDataScienceHandbook/notebooks/data/president_heights.csv
+
 heights = np.array(data['height(cm)'])
 print('Mean height', np.mean(heights))
 print('st. dev. of height', np.std(heights))
@@ -86,5 +92,7 @@ import matplotlib.pyplot as plt
 import seaborn; seaborn.set()
 
 plt.hist(heights)
-plt.show(block=True)
-
+plt.title("Distribution of Heights of US Presidents")
+plt.xlabel("height (cm)")
+plt.ylabel("frequency")
+plt.savefig("presidential_height.png")
