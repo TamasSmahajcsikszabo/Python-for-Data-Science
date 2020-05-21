@@ -11,7 +11,7 @@ inches.shape
 plt.hist(inches)
 plt.savefig("Histogram of Seattle rainfall.png")
 
-# comparison operations result in numpy arrays with Boolean data types 
+# comparison operations result in numpy arrays with Boolean data types
 rng = np.random.RandomState(0)
 x = rng.randint(10, size=(3,4))
 x < 6
