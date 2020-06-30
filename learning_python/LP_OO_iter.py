@@ -3,7 +3,6 @@
 
 from squares import Squares
 
-
 class Indexer:
     def __getitem__(self, index):
         return index**2
