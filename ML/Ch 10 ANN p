@@ -1,0 +1,252 @@
+# implementing Perceptrons
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.linear_model import Perceptron, SGDClassifier
+import tensorflow as tf
+
+iris = load_iris()
+x = iris.data[:, (2,3)]
+y = (iris.target == 0).astype(np.int)
+
+per_clf = Perceptron(random_state=42)
+# and alternative:
+per_clf_alt = SGDClassifier(
+    loss="perceptron",
+    learning_rate="constant",
+    eta0=1,
+    penalty=None
+)
+per_clf.fit(x,y)
+
+# activation functions
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def relu(z):
+    return np.maximum(0, z)
+
+def derivative(f, z, eps=0.000001):
+    return (f(z + eps) - f(z - eps))/(2 * eps)
+
+# training MLP using tensorflow's high-level API: TF.Learn
+# the DNNClassifier helps train a deep neural network with any number of hidden layers
+# a softmax output layer is implemented to yield class probabilities
+import tensorflow as tf
+
+# preprocessing is needed, such as scaling
+from sklearn.preprocessing import StandardScaler
+std_scaler = StandardScaler()
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+X_train = X_train.astype(np.float32).reshape(-1, 28*28) / 255.0
+X_test = X_test.astype(np.float32).reshape(-1, 28*28) / 255.0
+y_train = y_train.astype(np.int32)
+y_test = y_test.astype(np.int32)
+X_valid, X_train = X_train[:5000], X_train[5000:]
+y_valid, y_train = y_train[:5000], y_train[5000:]
+x_train = std_scaler.fit_transform(X_train)
+
+# book version
+feature_cols = tf.contrib.learn.infer_real_valued_columns_from_input(X_train)
+dnn_clf = tf.contrib.learn.DNNClassifier(hidden_units=[300,100], n_classes=10, feature_columns=feature_cols)
+dnn_clf = tf.contrib.learn.SKCompat(dnn_clf) # Sci-Kit Learn compatibility helper
+dnn_clf.fit(X_train, y_train, batch_size=50, steps=40000)
+
+y_pred = dnn_clf.predict(X_test)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred['classes'])
+
+# new version from Github
+feature_cols = [tf.feature_column.numeric_column("X", shape=[28 * 28])]
+dnn_clf = tf.estimator.DNNClassifier(hidden_units=[300,100], n_classes=10,
+                                     feature_columns=feature_cols)
+
+input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={"X": X_train}, y=y_train, num_epochs=40, batch_size=50, shuffle=True)
+dnn_clf.train(input_fn=input_fn)
+
+y_pred = dnn_clf.predict(X_test)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred)
+
+# alternative model evaluation
+x_test_scaled = std_scaler.fit_transform(X_test)
+test_input_fn = tf.estimator.inputs.numpy_input_fn(
+    x= {"x" : x_test_scaled}, y=y_test, shuffle=False
+)
+eval_results = dnn_clf.evaluate(input_fn=input_fn)
+
+## using TF lower level Python API
+# CONSTRUCTION PHASE
+n_inputs = 28 * 28
+n_hidden1 = 300
+n_hidden2 = 100
+n_outputs = 10
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name="x")
+y = tf.placeholder(tf.int64, shape=(None), name="y")
+
+def neuron_layer(x, n_neurons, name, activation=None):
+    with tf.name_scope(name):
+        n_inputs = int(x.get_shape()[1])
+        stddev = 2 / np.sqrt(n_inputs + n_neurons)
+        init = tf.truncated_normal((n_inputs, n_neurons), stddev=stddev)
+        W = tf.Variable(init, name="kernel")
+        b = tf.Variable(tf.zeros([n_neurons]), name="bias")
+        Z = tf.matmul(x, W) + b
+        if activation is not None:
+            return activation(Z)
+        else:
+            return Z
+
+# notes to the function code
+# the name_scope collects all the computation nodes under the name
+# n_inputs is the number of columns of the matrix
+# W is the weight matrix, a.k.a. the layer's kernel
+# the weight matrix's shape is by n_inputs and n_neurons,
+# it's initialized randomly and a truncated Gaussian distribution is used
+# to avoid large weights
+# the distribution's std. dev. is given by the square root of n_inputs and n_neurons
+# in order to help quicker convergence
+# the random initialization ensures that the model doesn't have any symmetries the
+# Gradient Descent can't break
+# bias node defined
+# Z is defined; it computes the weighted sums of the inputs plus the bias term for
+# each and every neuron in the layer, for all the instances in the batch
+# activation option is handled
+tf.nn.relu # for ReLU activation
+
+# let's create the neural network
+# the first takes X as input
+# the second takes the first layer as input
+# the output layer takes the second hidden layer's output as input
+
+with tf.name_scope("dnn"):
+    hidden1 = neuron_layer(x, n_hidden1, name="hidden1",
+                           activation=tf.nn.relu)
+    hidden2 = neuron_layer(hidden1, n_hidden2, name="hidden2",
+                           activation=tf.nn.relu)
+    logits = neuron_layer(hidden2, n_outputs, name="outputs")
+
+# TF's own functions for creating neuron layers:
+tf.layers.dense()
+# to use it, we can modify the code from above
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, name="hidden1",
+                           activation=tf.nn.relu)
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, name="hidden2",
+                           activation=tf.nn.relu)
+    logits = tf.layers.dense(hidden2, n_outputs, name="outputs")
+
+# after defining the neural network, we need a cost function to train it
+# let's use cross entropy
+# cross entropy penalizes models that have low probability for the target class
+# TF has many models to estimate cross entropy
+tf.nn.sparse_softmax_entropy_with_logits()
+# it takes the logits from the output layer entropys input
+# it expects labels as integers from 0 to the number of classes minus 1
+# and yield an output 1d tensor containing the cross entropy for each instance
+# reduce_mean() can be used for that
+
+with tf.name_scope("loss"):
+    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y,
+                                                              logits=logits)
+    loss = tf.reduce_mean(xentropy, name="loss")
+
+# if class labels are one-hot vectors use:
+tf.nn.softmax_cross_entropy_with_logits()
+
+# the next step is to have an optimizer that tweaks the model parameters to minimize cost function
+learning_rate = 1
+with tf.name_scope("train"):
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    training_op = optimizer.minimize(loss)
+
+# the final step is to determine how to evaluate the model
+# what should be the accuracy measure
+# checking each highest logit corresponds to the target class
+tf.nn.in_top_k() # returns a 1D tensor with boolean value if the target is matched
+# these booleans need to cast into floats, then estimate the average
+
+with tf.name_scope("eval"):
+    correct = tf.nn.in_top_k(logits, y, 1)
+    accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+
+init = tf.global_variables_initializer()
+saver = tf.train.Saver()
+
+### EXECUTION PHASE
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets("./tmp/data/")
+
+n_epochs = 40
+batch_size = 50
+# training the model
+with tf.Session() as sess:
+    init.run()
+    for epoch in range(n_epochs):
+        for iteration in range(mnist.train.num_examples // batch_size):
+            x_batch, y_batch = mnist.train.next_batch(batch_size)
+            sess.run(training_op, feed_dict={x: x_batch, y:y_batch})
+        acc_train = accuracy.eval(feed_dict={x: x_batch, y:y_batch})
+        acc_val = accuracy.eval(feed_dict={x: mnist.validation.images,
+                                           y:mnist.validation.labels})
+        print(epoch, "Train accuracy", acc_train, "val accuracy", acc_val)
+    save_path = saver.save(sess, "./my_model_final.ckpt")
+
+# using the neural network
+# making predictions
+# the same construction phase, but with altered execution phase
+x_test_sample_scaled = std_scaler.fit_transform(X_test[:20])
+with tf.Session() as sess:
+    saver.restore(sess, "./my_model_final.ckpt")
+    x_new_scaled = x_test_sample_scaled
+    z = logits.eval(feed_dict={x: x_new_scaled})    # it evaluates the logits node
+    y_pred = np.argmax(z, axis=1) # argmax picks up the highest prob. class
+
+
+#predicting class probabilities
+with tf.Session() as sess:
+    saver.restore(sess, "./my_model_final.ckpt")
+    x_new_scaled = x_test_sample_scaled
+    z = logits.eval(feed_dict={x: x_new_scaled})
+    print(z)
+
+# fine-tuning the hyperparameters
+# NNs are flexible, but they also have lots of parameters to tweak
+# interconnections, number of layers, number of neurons, activation functions etc.
+
+# a grid search is exhaustive and can only cover some degree of the hyperparameter space
+# randomized search is better
+# Oscar can be used alternatively
+
+# search guideline, element by element
+# 1. hidden layers
+# one layer is sufficient in many cases
+# multilayers with higher number of neurons are flexible and have high parameter efficiency
+# more hidden layers allow us to model hierarchies in the data:
+    # lower levels model the high level structures
+    # while additional hidden layers can capture the subtleties
+# this makes DNNs flexible, quick to train, and they can accomodate complex problems
+# they also have good ability to generalize to new datasets:
+# lower level neurons can be reused, and the new model can flexibly be trained to the new high level features,
+# like a trained model on facial recognition, can be accomodated to hairstyles
+# start with 1-2 hidden layers, and raise the count later
+# look out for the overfitting
+
+# 2. number of neurons per hidden layers
+# the input and output data determines the number of starting input and output neurons
+# typically the neural net is formed to be a funnel
+# it's possible to increase the number of neurons, but that in turn might lead to overfitting
+# using more than needed neurons and gradially decreasing is a good technique
+
+# 3. activation functions
+# relu is used many times as hidden layer activation function
+# GD doesn't stuck on it
+# it doesn't saturate on large input values, as oppposed to hyperbolic tangent or logistic functions
+# both saturate at 1
+# as output activation function, either softmax is used for mutually exclusive classes
+# or for not exclusive or two-class cases, the logistic function
+
+
+
+
+

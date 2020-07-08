@@ -1,0 +1,108 @@
+# implementing Perceptrons
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.linear_model import Perceptron, SGDClassifier
+
+iris = load_iris()
+x = iris.data[:, (2,3)]
+y = (iris.target == 0).astype(np.int)
+
+per_clf = Perceptron(random_state=42)
+# and alternative:
+per_clf_alt = SGDClassifier(
+    loss="perceptron",
+    learning_rate="constant",
+    eta0=1,
+    penalty=None
+)
+per_clf.fit(x,y)
+
+# activation functions
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def relu(z):
+    return np.maximum(0, z)
+
+def derivative(f, z, eps=0.000001):
+    return (f(z + eps) - f(z - eps))/(2 * eps)
+
+# training MLP using tensorflow's high-level API: TF.Learn
+# the DNNClassifier helps train a deep neural network with any number of hidden layers
+# a softmax output layer is implemented to yield class probabilities
+import tensorflow as tf
+
+# preprocessing is needed, such as scaling
+from sklearn.preprocessing import StandardScaler
+std_scaler = StandardScaler()
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+X_train = X_train.astype(np.float32).reshape(-1, 28*28) / 255.0
+X_test = X_test.astype(np.float32).reshape(-1, 28*28) / 255.0
+y_train = y_train.astype(np.int32)
+y_test = y_test.astype(np.int32)
+X_valid, X_train = X_train[:5000], X_train[5000:]
+y_valid, y_train = y_train[:5000], y_train[5000:]
+x_train = std_scaler.fit_transform(X_train)
+
+# book version
+feature_cols = tf.contrib.learn.infer_real_valued_columns_from_input(X_train)
+dnn_clf = tf.contrib.learn.DNNClassifier(hidden_units=[300,100], n_classes=10, feature_columns=feature_cols)
+dnn_clf = tf.contrib.learn.SKCompat(dnn_clf) # Sci-Kit Learn compatibility helper
+dnn_clf.fit(X_train, y_train, batch_size=50, steps=40000)
+
+y_pred = dnn_clf.predict(X_test)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred['classes'])
+
+# new version from Github
+feature_cols = [tf.feature_column.numeric_column("X", shape=[28 * 28])]
+dnn_clf = tf.estimator.DNNClassifier(hidden_units=[300,100], n_classes=10,
+                                     feature_columns=feature_cols)
+
+input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={"X": X_train}, y=y_train, num_epochs=40, batch_size=50, shuffle=True)
+dnn_clf.train(input_fn=input_fn)
+
+y_pred = dnn_clf.predict(X_test)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred)
+
+## using TF lower level Python API
+# CONSTRUCTION PHASE
+n_inputs = 28 * 28
+n_hidden1 = 300
+n_hidden2 = 100
+n_outputs = 10
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name="x")
+y = tf.placeholder(tf.int64, shape=(None), name="y")
+
+def neuron_layer(x, n_neurons, name, activation=None):
+    with tf.name_scope(name):
+        n_inputs = int(x.get_shape()[1])
+        stddev = 2 / np.sqrt(n_inputs + n_neurons)
+        init = tf.truncated_normal((n_inputs, n_neurons), stddev=stddev)
+        W = tf.Variable(init, name="kernel")
+        b = tf.Variable(tf.zeros([n_neurons]), name="bias")
+        Z = tf.matmul(x, W) + b
+        if activation is not None:
+            return activation(Z)
+        else:
+            return Z
+
+# notes to the function code
+# the name_scope collects all the computation nodes under the name
+# n_inputs is the number of columns of the matrix
+# W is the weight matrix, a.k.a. the layer's kernel
+# the weight matrix's shape is by n_inputs and n_neurons,
+# it's initialized randomly and a truncated Gaussian distribution is used
+# to avoid large weights
+# the distribution's std. dev. is given by the square root of n_inputs and n_neurons
+# in order to help quicker convergence
+# the random initialization ensures that the model doesn't have any symmetries the
+# Gradient Descent can't break
+# bias node defined
+# Z is defined; it computes the weighted sums of the inputs plus the bias term for
+# each and every neuron in the layer, for all the instances in the batch
+# activation option is handled
+tf.nn.relu # for ReLU activation
+

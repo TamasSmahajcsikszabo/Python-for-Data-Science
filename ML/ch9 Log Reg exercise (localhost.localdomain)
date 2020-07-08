@@ -1,0 +1,4 @@
+import tensorflow as tf
+from sklearn.datasets import make_moons
+
+data = make_moons(1000, noise = 1.5)

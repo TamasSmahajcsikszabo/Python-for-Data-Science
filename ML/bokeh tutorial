@@ -1,0 +1,101 @@
+import numpy as np
+from bokeh.io import output_notebook, show
+from bokeh.plotting import figure
+
+p = figure(plot_width=400, plot_height=400)
+p.circle([1,2,3,4,5], [6,7,2,4,5],
+         radius = 0.2,
+         line_color="navy",
+         fill_color="orange",
+         fill_alpha=0.5)
+show(p)
+
+
+p = figure(plot_width=400, plot_height=400)
+p.diamond_cross([1, 2, 3, 4, 5], [6, 7, 2, 4, 5], size=[10, 15, 20, 25, 30], color="firebrick", alpha=0.6)
+show(p)
+
+from bokeh.sampledata.autompg import autompg as df
+import pandas as pd
+p = figure(plot_width=400, plot_height=400, title="My Line Plot")
+p.line([1, 2, 3, 4, 5], [6, 7, 2, 4, 5], line_width=2)
+show(p) # show the results
+
+df.columns
+p = figure(plot_width=400, plot_height=400, title="My Line Plot")
+p.line(df[['mpg']], df[['displ']], line_width=2)
+show(p)
+df.iloc[:,[2,3]]
+
+data = pd.read_csv("dates_data.csv")
+p = figure(x_axis_type="datetime", title="Glocose Range", plot_height=350, plot_width=800)
+p.xgrid.grid_line_color=None
+p.ygrid.grid_line_alpha=0.5
+p.xaxis.axis_label = 'Time'
+p.yaxis.axis_label = 'Value'
+p.line(data.index, data.glucose)
+show(p)
+
+import bokeh
+import numpy as np
+from bokeh.io import output_notebook, show
+from bokeh.plotting import figure
+import pandas as pd
+
+data = pd.read_csv("/home/tamas/.bokeh/data/AAPL.csv")
+data.columns
+dates = np.array(data['Date'], dtype=np.datetime64)
+x1 = np.array(data['Open'])
+x2 = np.array(data['Close'])
+
+p = figure(x_axis_type="datetime", title="Stock Data",
+           plot_height=350, plot_width=800)
+p.line(dates, x1, color = "red")
+p.line(dates, x2)
+p.line(x1, x2)
+show(p)
+
+# hex tiling
+from bokeh.palettes import Viridis256
+from bokeh.util.hex import hexbin
+
+n = 50000
+x = np.random.standard_normal(n)
+y = np.random.standard_normal(n)
+
+bins = hexbin(x, y, 0.05)
+color = [Viridis256[int(i)] for i in bins.counts/max(bins.counts)*255]
+p = figure(tools="wheel_zoom,reset",
+           match_aspect=True,
+           background_fill_color='#440154')
+p.grid.visible = False
+p.hex_tile(bins.q, bins.r, size=0.05, line_color=None, fill_color=color)
+show(p)
+
+N = 500
+x = np.linspace(0, 10, N)
+y = np.linspace(0, 10, N)
+xx, yy = np.meshgrid(x, y)
+
+img = np.sin(xx)*np.cos(yy)
+
+p = figure(x_range=(0, 10), y_range=(0, 10))
+
+# must give a vector of image data for image parameter
+p.image(image=[img], x=0, y=0, dw=10, dh=10, palette="Spectral11")
+
+show(p)
+
+
+# set up some data
+x = [1, 2, 3, 4, 5]
+y = [6, 7, 8, 7, 3]
+
+# create a new plot with figure
+p = figure(plot_width=400, plot_height=400)
+
+# add both a line and circles on the same plot
+p.line(x, y, line_width=2)
+p.circle(x, y, fill_color="white", size=8)
+
+show(p) # show the results

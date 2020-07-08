@@ -1,0 +1,156 @@
+import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets("./tmp/data/")
+import numpy as np
+import os as os
+from datetime import datetime
+import struct
+
+# data splitting
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+std_scaler = StandardScaler()
+
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+X_train = X_train.astype(np.float32).reshape(-1, 28*28) / 255.0
+X_test = X_test.astype(np.float32).reshape(-1, 28*28) / 255.0
+y_train = y_train.astype(np.int32)
+y_test = y_test.astype(np.int32)
+x_train = std_scaler.fit_transform(X_train)
+
+
+# contruction phase
+# input & output parameters, placeholders for x & y
+n_inputs = 28 * 28
+n_hidden1 = 500
+n_hidden2 = 250
+n_hidden3 = 100
+n_outputs = 10
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name = "x")
+y = tf.placeholder(tf.int64, shape=(None), name = "y")
+
+# neuron layers
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, name="hidden1", activation=tf.nn.relu)
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, name="hidden2", activation=tf.nn.relu)
+    hidden3 = tf.layers.dense(hidden2, n_hidden3, name="hidden3", activation=tf.nn.relu)
+    logits = tf.layers.dense(hidden3, n_outputs, name="outputs")
+
+
+# loss function
+with tf.name_scope("loss"):
+    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y,
+                                                              logits=logits)
+    loss = tf.reduce_mean(xentropy, name="loss")
+    loss_summary = tf.summary.scalar('cross entropy', loss)
+
+
+# optimizer
+learning_rate = 0.01
+with tf.name_scope("train"):
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+    training_op = optimizer.minimize(loss)
+
+# model evaluation
+with tf.name_scope("eval"):
+    correct = tf.nn.in_top_k(logits, y, 1)
+    accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+
+checkpoint_path = "./tmp/my_logreg_model.ckpt"
+checkpoint_epoch_path = checkpoint_path + ".epoch"
+final_model_path = "./my_logreg_model"
+
+now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+root_logdir = "tf_logs"
+logdir = "{}/run-{}".format(root_logdir, now)
+file_writer = tf.summary.FileWriter(logdir, tf.get_default_graph())
+
+init = tf.global_variables_initializer()
+saver = tf.train.Saver()
+
+# execution phase
+n_epoch = 40
+batch_size= 50
+
+best_loss = np.infty
+epoch_without_progress = 0
+max_epochs_without_progress = 40
+
+
+with tf.Session() as sess:
+    if os.path.isfile(checkpoint_epoch_path):
+        with open(checkpoint_epoch_path, "rb") as f:
+            start_epoch = int(f.read())
+        print("Training was interrupted. Continuing at epoch", start_epoch)
+        saver.restore(sess, checkpoint_path)
+    else:
+        start_epoch = 0
+        sess.run(init)
+
+    for epoch in range(n_epoch):
+        for iteration in range(len(x_train) // batch_size):
+            x_batch, y_batch = mnist.train.next_batch(batch_size)
+            sess.run(training_op, feed_dict={x: x_batch, y: y_batch})
+            save_path = saver.save(sess, "./last_checkpoint.ckpt")
+        acc_train = accuracy.eval(feed_dict={x: x_batch, y: y_batch})
+        acc_val = accuracy.eval(feed_dict={x: mnist.validation.images,
+                                           y: mnist.validation.labels})
+        loss_summary_est, loss_est = sess.run([loss_summary,loss], feed_dict={x: x_batch, y: y_batch})
+        file_writer.add_summary(loss_summary_est, epoch)
+        print(epoch, "Train accuracy:", acc_train, "Validation accuracy:", acc_val)
+        if loss_est < best_loss:
+            best_loss = loss_est
+        else:
+            epoch_without_progress += 5
+            if epoch_without_progress > max_epochs_without_progress:
+                print("Early stopping at", epoch)
+                break
+
+    save_path = saver.save(sess, "./MNIST_model.ckpt")
+
+# model evaluations
+
+x_test_sample_scaled = std_scaler.fit_transform(X_test)
+with tf.Session() as sess:
+    saver.restore(sess, "./MNIST_model.ckpt")
+    x_new_scaled = x_test_sample_scaled
+    z = logits.eval(feed_dict={x: x_new_scaled})    # it evaluates the logits node
+    y_pred = np.argmax(z, axis=1)
+
+from sklearn.metrics import confusion_matrix, accuracy_score
+cnf_mx = confusion_matrix(y_test, y_pred)
+accuracy_score(y_test, y_pred)
+## instead of absolute count of errors, observe the error rates:
+import pandas as pd
+import matplotlib.pyplot as plt
+
+row_sums = cnf_mx.sum(axis = 1, keepdims = True)
+norm_conf_mx = cnf_mx / row_sums
+pd.DataFrame(cnf_mx)
+pd.DataFrame(norm_conf_mx)
+
+np.fill_diagonal(norm_conf_mx, 0) ## keeping only the errors
+pd.DataFrame(norm_conf_mx)
+
+plt.matshow(norm_conf_mx, cmap = plt.cm.viridis)
+plt.axis([-1,10,10,-1])
+plt.show()
+
+
+accuracy_score(y_test, y_pred)
+## instead of absolute count of errors, observe the error rates:
+import pandas as pd
+import matplotlib.pyplot as plt
+
+row_sums = cnf_mx.sum(axis = 1, keepdims = True)
+norm_conf_mx = cnf_mx / row_sums
+pd.DataFrame(cnf_mx)
+pd.DataFrame(norm_conf_mx)
+
+np.fill_diagonal(norm_conf_mx, 0) ## keeping only the errors
+pd.DataFrame(norm_conf_mx)
+
+plt.matshow(norm_conf_mx, cmap = plt.cm.viridis)
+plt.axis([-1,10,10,-1])
+plt.show()
+

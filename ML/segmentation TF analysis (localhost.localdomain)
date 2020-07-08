@@ -1,0 +1,14 @@
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# get the data
+data = pd.read_csv("/home/tamassmahajcsikszabo/OneDrive/python_code/data.csv")
+data = data.drop('Case', axis=1)
+y = np.array(data['Class'])
+
+
+# CONSTRUCTION PHASE
+
+# EXECUTION PHASE

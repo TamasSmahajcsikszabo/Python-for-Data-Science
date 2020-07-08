@@ -1,0 +1,320 @@
+## XAVIER AND HE INITIALIZATION
+import tensorflow as tf
+tf.layers.dense() # by default it uses Xaver-initialization with uniform distribution
+# changing it to He
+n_inputs = 28 * 28  # MNIST
+n_hidden1 = 300
+
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
+he_init = tf.variance_scaling_initializer()
+# mode="FAN_AVG" for averaging fan-in and fan-out
+# by default, He only considers fan-in
+x = tf.placeholder(tf.float32,shape=(None, n_inputs),name="x")
+hidden_1 = tf.layers.dense(x, n_hidden1, activation = tf.nn.relu,
+                           kernel_initializer = he_init, name = "hidden1")
+
+## using ELUs
+hidden1 = tf.layers.dense(x, n_hidden1, activation=tf.nn.elu, name="hidden1")
+
+## using leaky ReLUs
+def leaky_ReLU(z, alpha=0.01, name=None):
+    return tf.maximum(alpha*z, z, name=name)
+hidden1 = tf.layers.dense(x, n_hidden1, activation=leaky_ReLU, name="hidden1")
+
+# BATCH NORMALIZATION
+import tensorflow as tf
+n_inputs = 28 * 28
+n_hidden1 = 300
+n_hidden2 = 100
+n_outputs = 10
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
+training = tf.placeholder_with_default(False, shape=(), name="training")
+hidden1 = tf.layers.dense(x, n_hidden1, name="hidden1")
+bn1 = tf.layers.batch_normalization(hidden1, training=training, momentum=0.9)
+bn1_act = tf.nn.elu(bn1) # the activation function
+hidden2 = tf.layers.dense(bn1_act, n_hidden2, name="hidden2")
+bn2 = tf.layers.batch_normalization(hidden2, training=training, momentum=0.9)
+bn2_act = tf.nn.elu(bn2) # the activation function
+logits_before_bn = tf.layers.dense(bn2_act, n_outputs, name="outputs")
+logits = tf.layers.batch_normalization(logits_before_bn, training=training, momentum=0.9)
+
+# an optimized variant with partial()
+from functools import partial
+
+layer_def = partial(tf.layers.batch_normalization(training=training, momentum=0.9))
+n_inputs = 28 * 28
+n_hidden1 = 300
+n_hidden2 = 100
+n_outputs = 10
+x = tf.placeholder(tf.float32, shape=(None, n_inputs), name="X")
+training = tf.placeholder_with_default(False, shape=(), name="training")
+hidden1 = tf.layers.dense(x, n_hidden1, name="hidden1")
+bn1 = layer_def(hidden1)
+bn1_act = tf.nn.elu(bn1)
+hidden2 = tf.layers.dense(bn1_act, n_hidden2, name="hidden2")
+bn2 = layer_def(hidden2)
+bn2_act = tf.nn.elu(bn2)
+logits_before_bn = tf.layers.dense(bn2_act, n_outputs, name="outputs")
+logits = tf.layers.batch_normalization(logits_before_bn, training=training, momentum=0.9)
+
+
+# the rest of the construction phase is the same
+
+# execution phase
+# 1. whenever any operation depending on batch_normalization() runs, training PH needs to ne true
+# 2. the moving averages (which are needed for the mean and the std. dev. ) are updated by some
+# operations
+# they are collected automatically in the UPDATE_OPS collection
+# so we need to get their list and run them at each iteration of the training
+
+extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
+with tf.Session() as sess:
+    init.run()
+    for epoch in range(n_epochs):
+        for iteration in range(mnist.train.num_examples // batch_size):
+            x_batch, y_batch = mnist.train.next_batch(batch_size)
+            sess.run([training_op, extra_update_ops], feed_dict={training: True, x: x_batch, y:y_batch})
+        acc_val = accuracy.eval(feed_dict={x: mnist.validation.images,
+                                           y:mnist.validation.labels})
+        print(epoch, "Train accuracy", acc_train, "val accuracy", acc_val)
+    save_path = saver.save(sess, "./my_model_final.ckpt")
+
+
+# Gradient Clipping
+threshold = 1.0
+optimizer = tf.GradientDescentOptimizer(learning_rate)
+gradients = optimizer.compute_gradients(loss)
+capped_vars = [(tf.clip_by_value(grad,-threshold, threhold),var) for grad, var in gradients]
+training_op = optimizer.apply_gradients(capped_vars)
+
+# reusing existing DNNs
+# if it was trained in tensorflow:
+tf.import_meta_graph() # it imports the operations into the default graph
+saver = tf.import_meta_graph("./my_model.ckpt.meta")
+# then we need the operations and the tensors with
+# the name of the tensor is the name of the operation that output it followed by :0, :1 etc
+x = tf.get_default_graph().get_tensor_by_name('x:0')
+y = tf.get_default_graph().get_tensor_by_name('y:0')
+accuracy = tf.get_default_graph().get_tensor_by_name('eval/accuracy:0')
+training_op = tf.get_default_graph().get_operation_by_name('GradientDescent')
+
+# to list all the operations
+for op in tf.get_default_graph().get_operations():
+    print(op.name)
+
+# if the model is mine, it's a good idea (besides documenting) to collect operations in collections
+for op in (x,y, accuracy, training_op):
+    tf.add_to_collection("my_important_operations", op)
+
+# working with collections, make the import easier:
+x,y,accuracy,training_op = tf.get_collection("my_important_operations", op)
+
+# once having all the tensors and operations, the model can be restored
+with tf.Session() as sess:
+    saver.restore(sess, "./my_model.ckpt")
+
+# after restoration, the higher layers are usually ignored
+# a new loss function is declared and a new minimizer
+# for example, to get the only first 3 hidden layers
+reuse_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                               scope="hidden[123]") # note the REGEX
+restore_saver = tf.train.Saver(reuse_vars) # to restore layers 1-3
+
+init = tf.global_variables_initializer() # initializes all variables, old and new
+saver = tf.train.Saver() #to save the new model
+
+with tf.Session() as sess:
+    init.run()
+    restore_saver.restore(sess, "./my_model.ckpt")
+    [...]
+    save_path = saver.save(sess, "./my_new_model.ckpt")
+# we need two savers, one for restoring, and other for saving a trained model
+
+#### Freezing the lower layers
+# when the lower levels will be reused, it's a good practice to fix their weights, so
+# the higher levels will be easier to train
+# solution 1. - to give the optimizer the list of variables to train, excluding the lower layers
+train_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="hidden[34]|outputs")
+training_op = optimizer.minimize(loss, var_list=train_vars)
+# hidden1 and hidden2 are now *frozen layers*
+
+# solution 2. - adding a stop_gradient() layer in the graph
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, activation=tf.nn.relu,
+                              name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, activation=tf.nn.relu,
+                              name="hidden2")
+    hidden2_stop = tf.stop_gradient(hidden2)
+    hidden3 = tf.layers.dense(x, n_hidden2_stop, activation=tf.nn.relu,
+                              name="hidden3")
+    hidden4 = tf.layers.dense(x, n_hidden3, activation=tf.nn.relu,
+                              name="hidden4")
+    logits = tf.layers.dense(hidden4, n_outputs,name="outputs")
+
+# caching the frozen layers' output to speed boost
+# for example, instead of building batches during training, feed batches of the
+# cached hidden layer 2 to the training op:
+import numpy as np
+n_batches = mnist.train.num_examples // batch_size
+
+with tf.Session() as sess:
+    init.run()
+    restore_saver.restore(sess, "./my_model_final.ckpt")
+    h2_cache = sess.run(hidden2, feed_dict={x : mnist.train.images})
+
+    for epoch in range(n_epochs):
+        shuffled_idx = np.random.permutation(mnist.train.num_examples)
+        hidden2_batches = np.array_split(h2_cache[shuffled_idx], n_batches)
+        y_batches = np.array_split(mnist.train.labels[shuffles_idx], n_batches)
+        for hidden2_batch, y_batch in zip(hidden2_batches, y_batches):
+            sess.run(training_op, feed_dict={hidden2:hidden2_batch, y:y_batch})
+
+    save_path = saver.save(sess, "./my_new_model.ckpt")
+
+# generally the pretrained model's output layer and high level layer are not useble
+# it's a good strategy to unfreeze higher layers gradually
+
+# for large unlabeled training data: unsupervised pretraining using autoencoders, or
+# Restricted Boltzmann Machines (RBM):
+# train the model from lowest to highest layers,
+# where each layer except for the actually trained are frozen
+# and each uses the previous's outputs as inputs
+
+# Petraining on an auxiliary task:
+# have a large number of unlabeled training data, label them as good
+# randomly change features and generate a bad subset
+# train a model on an auxiliary task
+
+# max margin learning: train a model on all instances where an output is a score and
+# use an optimizer which makes sure that the good isntances have higher scores
+
+# Momentum Optimizer
+optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
+
+# Nesterov Momentum Optimizer
+optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, use_nesterov=True, momentum=0.9)
+
+# RMSProp
+optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate,
+                                      momentum=0.9,
+                                      decay=0.9,
+                                      epsilon=1e-10)
+
+# Adam
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+
+# training sparse models (i.e. not all the parameters are non-zero) with Follow the Regularized Leader (FTLR)
+optimizer = tf.train.FtrlOptimizer()
+
+
+# LEARNING RATES with tensorFlow
+initial_learning_rate = 0.1 # eta_0
+decay_steps  = 10000 # this is the r parameter
+decay_rate = 1/10 #
+
+# to keep track of the current iteration:
+global_step = tf.Variable(0, trainable=False, name="global_step")
+
+
+learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step, decay_steps, decay_rate)
+optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=0.9)
+training_op = optimizer.minimize(loss, global_step=global_step) # this will take care of incrementing the step
+
+## Implementing Regularization
+
+# L1 rergularization with one hidden and an output layer:
+# W1 is a hidden layer with weights; W2 is the output layer
+W1 = tf.get_default_graph().get_tensor_by_name('hidden1/kernel:0')
+W2 = tf.get_default_graph().get_tensor_by_name('outputs/kernel:0')
+
+scale = 0.01 # the (lambda) scaling parameter for the penalty
+
+with tf.name_scope("loss"):
+    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y,
+                                                              logits=logits)
+    base_loss = tf.reduce_mean(xentropy, name="avg_xentropy")
+    reg_losses = tf.reduce_mean(tf.abs(W1)) + tf.reduce_mean(abs(W2))
+    loss = tf.add(base_loss, scale * reg_losses, name = 'loss')
+
+# with many layers, this approach is not feasible
+# TF has a better option:
+# most of the functions in TF which create variables like get_variables() or tf.layers.dense() accept the *_regularizer
+# argument
+# it can accept any function that takes weights and returns the corresponding regularization loss
+
+from functools import partial
+
+my_dense_layer = partial(
+    tf.layers.dense(activation=tf.nn.relu,
+                    kernel_regularizer=tf.contrib.layers.l1_regularizer())
+)
+
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, activation=tf.nn.relu,
+                              name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, activation=tf.nn.relu,
+                              name="hidden2")
+    logits = tf.layers.dense(hidden2, n_outputs,name="outputs")
+
+# the L1 regulariuation loss corresponding to each layer's weights are estimated
+# in TF there is a special collection for the regularization losses which are automatically added
+# so we can add them to the overall loss
+
+reg_losses = tf.get_collection(tf.Graphkeys.REGZLARIZATION_LOSSES)
+loss = tf.add_n([base_loss] + reg_losses, name = "loss")
+# if not added to the base cost, regularization losses are otherwise ignored
+
+# DROPOUT
+training = tf.placeholder_with_default(False, shape=(), name="training")
+drop_out = 0.5 # == 1 - keep_probability
+x_drop = tf.layers.dropout(x, drop_out, training=training)
+
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, activation=tf.nn.relu,
+                              name="hidden1")
+    hidden1_drop = tf.layers.dropout(hidden1, drop_out, training=training)
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, activation=tf.nn.relu,
+                              name="hidden2")
+    hidden2_drop = tf.layers.dropout(hidden2, drop_out, training=training)
+    logits = tf.layers.dense(hidden2, n_outputs,name="outputs")
+
+# when overfitting, raise the dropout rate
+# or decrease it when underfitting occurs
+# also it can help to raise it for large layers and reduce it for smaller ones
+
+# MAX-NORM regularization
+threshold = 1.0
+weights = tf.get_default_graph().get_tensor_by_name("hidden1/kernel:0")
+clipped_weights = tf.clip_by_norm(weights, clip_norm=threshold, axis = 1)
+clip_weights = tf.assign(weights, clipped_weights)
+
+# then the clipped weights need to be implemented
+sess.run(training_op, feed_dict={x: x_batch, y:y_batch})
+clip_weights.eval()
+
+# with high number of layers this solution becomes cumbersome
+# it's better to make a function for it
+def max_norm_regularizer(threshold, axis=1, name="max_norm",
+                         collection="max_norm"):
+    def max_norm(weights):
+        clipped_weights = tf.clip_by_norm(weights, clip_norm=threshold, axis=axis)
+        clip_weights = tf.assign(weights, clipped_weights)
+        tf.add_to_collection(collection, clip_weights)
+        return None
+    return max_norm
+# the function returns a parameterized max_norm() function that can be used as a regularizer
+
+max_norm_reg = max_norm_regularizer(threshold=1)
+with tf.name_scope("dnn"):
+    hidden1 = tf.layers.dense(x, n_hidden1, activation=tf.nn.relu,
+                              kernel_regularizer=max_norm_reg,
+                              name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, activation=tf.nn.relu,
+                              kernel_regularizer=max_norm_reg,
+                              name="hidden2")
+    logits = tf.layers.dense(hidden2, n_outputs,name="outputs")
+
+# it doesn't add a regularization loss to the overall loss function, that's why the max_norm
+# function returns None
+
