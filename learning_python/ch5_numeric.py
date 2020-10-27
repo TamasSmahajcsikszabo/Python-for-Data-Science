@@ -14,8 +14,8 @@ a + b
 
 # some advanced operations
 b = b + 2
-a // b 
-a % b
+a // b # floor
+a % b # modulus remainder
 c = 4.0
 complex(a,b) + c
 4.02 > 4
@@ -99,7 +99,7 @@ random.shuffle(movies)
 # the decimal type
 # they are fixed-precision floating point values
 #1. fixed decimal places
-#2. custom rulos of rounding and truncation
+#2. custom rules of rounding and truncation
 3 * 0.1 - 0.3 # usual floating point numbers
 from decimal import Decimal
 Decimal('0.1') + Decimal('0.1') + Decimal('0.1') - Decimal('0.3')
@@ -113,7 +113,6 @@ decimal.Decimal.from_float(1.23456)
 with decimal.localcontext() as ctx:
         ctx.prec = 1
         decimal.Decimal('1.33') / decimal.Decimal('2.54')
-
 
 # fraction number type
 # keeps numerator and denominator variables explicitly
@@ -149,14 +148,16 @@ a.limit_denominator(10)
 # mixed data types
 # expression operations
 # literal for sets is {}
+# order-independent comparisons
 
 x = set('scrubb')
 y = set('shrubb')
 x - y
-x | y
-x & y
-x ^ y
-x > y
+y - x
+x | y # union = all items
+x & y # intersection = common items
+x ^ y # XOR - symmetric difference
+x > y, x < y #superset, subset
 's' in x    #membership test
 # some methods for sets (they allow other data types)
 z = x.intersection(y)

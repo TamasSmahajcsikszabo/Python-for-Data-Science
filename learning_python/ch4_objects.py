@@ -143,16 +143,20 @@ list(map(sum, matrix)) #map built-in
 {i : sum(matrix[i]) for i in range(3)}
 
 # variants
+help(ord)
+help(set)
 [ord(x) for x in 'spaam'] # output is list of ordinals of characters
 {ord(x) for x in 'spaam'} # a set of the values - duplicates removed!
 {x : ord(x) for x in 'spaam'} # a dictionary, keys are unique!
-(ord(x) for x in 'spaam') # a generator
+g = (ord(x) for x in 'spaam') # a generator
+for i in g:
+    print(i)
 
 ### dictionaries
 # they store objects by unique keys rather than by relative position
 D = {'food' : 'Spam', 'quantity' : 4, 'color' : 'pink'} # [] reference references the key
 D['food']
-D['quantity'] += 1 # dictionaries are mutable
+D['quantity'] += 1 # dictionaries are mutable!!!
 
 # building a dictionary (unlike lists, here out-of-bounds assignments are possible
 E = {}
@@ -165,6 +169,8 @@ E2 = dict(name = 'Bob', job = 'plumber', age = 40)
 
 # third way of creating a dictionary with dict type name + zipping two sequences
 E3 = dict(zip(['name', 'job', 'age'], ['Bob', 'plumber', 40]))
+# list(zip(['a', 'b', 'c'], [1, 2, 3]))
+help(zip)
 
 ### complex dictionaries
 record = {'name' : {'first' : 'Bob', 'last' : 'Average'},
@@ -194,7 +200,7 @@ value = record['name'] if 'name' in record else 0
 # 3. for loops
 
 ks = list(record.keys())
-ks.sort()# since ks object is a list, it's mutable on its place
+ks.sort() # since ks object is a list, it's mutable on its place
 
 for key in ks:
     print(key, '=>', record[key])
@@ -215,7 +221,8 @@ while x > 0:
     print('spam! ' * x)
     x -= 1
 
-# iteration protocol - responds to the iter() call and raises an exception when finished producing values
+# iteration protocol - responds to the iter() call
+# and raises an exception when finished producing values
 
 # list comprehension example and its loop variant
 squares = [ x **2 for x in [1,2,3,4]] # list comprehension
@@ -226,7 +233,7 @@ for x in [1,2,3,4]:
 
 # considering run speed:
 # for loops are slower
-# comprehensions and relaed tools like map and filter run twice as fast
+# comprehensions and related tools like map and filter run twice as fast
 # if performance testing is needed: time and timeit modules + profile module
 
 ### tuples
@@ -234,12 +241,12 @@ for x in [1,2,3,4]:
 # fixed collections of items
 T = (1, 2, 3, 4)
 T = T + (5, 6, 6)
-T[0]
+T[0] = 2
 len(T)
 
 # tuple methods
 T.index(6)
-T.count(6)
+T.count(6) # number of items
 
 # immutable - no item assignment or append
 T[0] = 2
@@ -251,20 +258,20 @@ T2 = 1, 2, [3, 4, 5, 5], ['Harry', 4, 5]
 
 ### files
 # open() function (two argments: external file name + optional processing mode)
-f = open('C:\OneDrive\pycode\data.txt', 'w')
+f = open('./learning_python/data.txt', 'w')
 f.write('Hello \n')
 f.write('world! \n')
 f.close()
 
 # reading back the file
-f = open('C:\OneDrive\pycode\data.txt', 'r')
+f = open('./learning_python/data.txt', 'r')
 text = f.read() # a file's contents are always string regardless of the type of the file
 print(text)
 text_list = text.split()
 
 #reading a file line by line with an iterator
 
-for line in open('C:\OneDrive\pycode\data.txt', 'r'): print(line)
+for line in open('./learning_python/data.txt', 'r'): print(line)
 dir(f)
 
 ### binary bytes files
