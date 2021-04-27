@@ -1,4 +1,10 @@
 class FirstClass:
+    def __init__(self, timestamp = None):
+        if timestamp is None:
+            self.timestamp = time.localtime()
+        else:
+            self.timestamp = timestamp
+
     def setnames(self, value):
         self.data = value
     def display(self):

@@ -7,10 +7,6 @@ def timer(func, *args):
 
 timer(pow, 2, 1000)
 timer(str.upper, 'spam')
-import sys
-sys.path
-import timer
-
 timer.total(1000, pow, 2, 1000)[0]
 timer.bestof(1000, str.upper, 'spam')
 timer.bestoftotal(50,1000,str.upper, 'spam')
@@ -46,7 +42,7 @@ print(sys.version)
 for test in (forLoop, listComp, mapCall, genExpr, genFunc):
     (bestof, (total, result)) = timer.bestoftotal(5, 1000, test)
     print('%-9s: %.5f => [%s...%s]' %
-          (test.__name__, bestof, result[0], result[-1])) 
+          (test.__name__, bestof, result[0], result[-1]))
 
 
 
@@ -56,5 +52,5 @@ timeit.repeat() ## combined with min() gives the best time of run
 min(timeit.repeat(stmt = "[x**2 for x in range(1000)]", number = 1000, repeat = 5))
 
 import chessboard
-chessboard.chessboard(10)
+chessboard.chessboard()
 min(timeit.repeat(chessboard.chessboard2(1000), number = 1000, repeat = 5))

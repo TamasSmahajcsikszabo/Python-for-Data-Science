@@ -11,7 +11,6 @@ import random
 random.choice([1,2,3,4])
 
 #strings
-
 t = "This is an example"
 
 len(t)
