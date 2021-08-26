@@ -3,6 +3,10 @@
 # ~ the original is the parent process, while the others are the children
 # ~ all run independently children can change from and outlive parents
 
+from subprocess import Popen, PIPE, call
+import sys
+from tkinter.messagebox import showinfo
+from tkinter import Tk
 from multiprocessing.pool import ThreadPool
 import threading
 import queue
@@ -133,7 +137,8 @@ for i in range(10):
     _thread.start_new_thread(counter, (i, 100))
 
 for mutex in range(len(exitmutexes)):
-    print('Mutex {0} locked status is {1}'.format(mutex, exitmutexes[mutex].locked()))
+    print('Mutex {0} locked status is {1}'.format(
+              mutex, exitmutexes[mutex].locked()))
     while not exitmutexes[mutex].locked():
         pass  # whether all locks have been taken
 print('Main thread exiting.')
@@ -169,17 +174,20 @@ numthreads = 5
 exitmutexes = [_thread.allocate_lock() for i in range(numthreads)]
 
 
-def counter(myId, count, mutex): # shared object of stdoutmutex is passed in
+def counter(myId, count, mutex):  # shared object of stdoutmutex is passed in
     for i in range(count):
         time.sleep(1/(myId + 1))
         with mutex:
-            print('[%s] => %s' % (myId, i)) # no need to call release, 'with' does it
+            # no need to call release, 'with' does it
+            print('[%s] => %s' % (myId, i))
     exitmutexes[myId].acquire()
+
 
 for i in range(numthreads):
     _thread.start_new_thread(counter, (i, 5, stdoutmutex))
 
-while not all(mutex.locked() for mutex in exitmutexes): time.sleep(0.25)
+while not all(mutex.locked() for mutex in exitmutexes):
+    time.sleep(0.25)
 print('Main thread exiting.')
 
 
@@ -197,6 +205,7 @@ class myThread(threading.Thread):
             with self.mutex:
                 print('[%s] => %s' % (self.myId, i))
 
+
 stdoutmutex = threading.Lock()
 
 threads = []
@@ -210,11 +219,11 @@ for thread in threads:
 print('Main thread exiting')
 
 
-
 # example 2 for threading
 # 1. subclass case, prefereed for OOP and if per-thread information is needed
 def action(i):
     print(i ** 32)
+
 
 class myThread(threading.Thread):
     def __init__(self, i):
@@ -223,6 +232,8 @@ class myThread(threading.Thread):
 
     def run(self):  # run() provides thread logic
         print(self.i ** 32)
+
+
 myThread(2).start()
 
 # 2. pass in action to the 'target' (default Thread class) argument, i.e.
@@ -232,6 +243,8 @@ thread.start()
 
 # synchronizing access to shared objects
 # without synchronizing:
+
+
 def not_synched():
 
     def adder():
@@ -242,56 +255,186 @@ def not_synched():
 
     threads = []
     for i in range(100):
-        thread = threading.Thread(target = adder, args=())
+        thread = threading.Thread(target=adder, args=())
         thread.start()
         threads.append(thread)
 
-    for thread in threads: thread.join()
+    for thread in threads:
+        thread.join()
     print(count)
+
 
 count = 0
 not_synched()
 # even statements such as assignments are not guaranteed to run to completion
 # by themselves, i.e. they are not atomic
 
-# apply thread locks to synchronize:
-
-def foo(word, number):
-    print(word * number)
-    return number
+# apply thread locks to synchronize shared object's access:
+count = 0
 
 
-words = ['hello', 'world', 'test', 'word', 'another test']
-numbers = [1, 2, 3, 4, 5]
-pool = ThreadPool(5)
-results = []
-for i in range(0, len(words)):
-    results.append(pool.apply_async(foo, args=(words[i], numbers[i])))
+def adder(addlock):
+    global count
+    with addlock:
+        count = count + 1
+    time.sleep(0.5)
+    with addlock:
+        count = count + 1
 
-pool.close()
-pool.join()
-results = [r.get() for r in results]
-print results
 
+addlock = threading.Lock()
+threads = []
+for i in range(100):
+    thread = threading.Thread(target=adder, args=(addlock,))
+    thread.start()
+    threads.append(thread)
+
+for thread in threads:
+    thread.join()
+print(count)
+
+help(threading.Event)
+help(threading.Semaphore)
 
 # the queue module
+# it makes thread synchronization automatic
+# only one thread can modify a queue at any given point in time, thus
+# queues are thread-safe
 
-stdoutmutex = _thread.allocate_lock()
-numthreads = 5
-exitmutexes = [_thread.allocate_lock() for i in range(numthreads)]
+# see queuetest.py as an example
 
-
-def counter(myId, count, mutex):
-    for i in range(count):
-        time.sleep(1/(myId + 1))
-        with mutex:
-            print('[%s] => %s' % (myId, i))
-    exitmutexes[myId].acquire()
+# in the threading module the program doesn't exit while spawned threads
+# are still running, unless they are daemons
+# parent thread passes along a daemonic status which flag can be set
+# manually setting a thread to nondaemonic prevents program exit
 
 
-for i in range(numthreads):
-    _thread.start_new_thread(counter, (i, 5, stdoutmutex))
+# GUI example
+win = Tk()
+win.after(5500, lambda: showinfo('Popup', 'Spam!'))
+win.mainloop()
 
-while not all(mutex.locked() for mutex in exitmutexes):
-    time.sleep(0.25)
-print('Main thread exiting.')
+
+# Program Exits
+# ~ explicitly call for program exits with sys and os modules
+# sys.exit() raises SystemExit exception
+
+try:
+    sys.exit()
+except SystemExit:
+    print('ignoring exit')
+
+# os exit options
+# does not raise Exit exeption
+
+# shell command exit satus codes
+pipe = os.popen('python3 testexit_sys.py')
+pipe.read()
+
+stat = pipe.close()
+stat >> 8
+
+# force unbuffered streams
+pipe = os.popen('python3 -u testexit_os.py')  # note -u parameter!
+pipe.read()
+pipe.close() >> 8
+
+# exit status with subprocess
+pipe = Popen('python3 testexit_sys.py', stdout=PIPE)
+pipe.stdout.read()
+
+call('testexit_sys.py')
+
+
+# intercept forked processes' exit status codes
+import os
+exitstat = 0
+
+
+def child():
+    global exitstat
+    exitstat += 1   # as forks always copy parent, all forked process get the
+                    # same global 0, so all spawned forks will print 1
+    print('Hello from child', os.getpid(), 'with exit stat:', exitstat)
+    os._exit(exitstat)
+    print('never reached')
+
+
+def parent():
+    while True:
+        newpid = os.fork()
+        if newpid == 0:
+            child()
+        else:
+            pid, status = os.wait()
+            print('Parent got', pid, status, (status >> 8))
+            if input() == 'q':
+                break
+
+
+parent()
+
+
+# a similar example with threads
+# _thread.exit() ~ sys.exit, raises Exception
+
+import _thread
+exitstat = 0
+
+def child():
+    global exitstat
+    exitstat += 1
+    threadid= _thread.get_ident()
+    print('Hello from child', threadid, 'with exit stat:', exitstat)
+    _thread.exit()
+    print('never reached')
+
+
+def parent():
+    while True:
+        _thread.start_new_thread(child, ())
+        if input() == 'q':
+            break
+
+parent()
+
+# APPENDIX
+
+# def foo(word, number):
+#     print(word * number)
+#     return number
+
+
+
+# words = ['hello', 'world', 'test', 'word', 'another test']
+# numbers = [1, 2, 3, 4, 5]
+# pool = ThreadPool(5)
+# results = []
+# for i in range(0, len(words)):
+#     results.append(pool.apply_async(foo, args=(words[i], numbers[i])))
+
+# pool.close()
+# pool.join()
+# results = [r.get() for r in results]
+# print results
+
+
+# stdoutmutex = _thread.allocate_lock()
+# numthreads = 5
+# exitmutexes = [_thread.allocate_lock() for i in range(numthreads)]
+
+
+# def counter(myId, count, mutex):
+#     for i in range(count):
+#         time.sleep(1/(myId + 1))
+#         with mutex:
+#             print('[%s] => %s' % (myId, i))
+#     exitmutexes[myId].acquire()
+
+
+# for i in range(numthreads):
+#     _thread.start_new_thread(counter, (i, 5, stdoutmutex))
+
+# while not all(mutex.locked() for mutex in exitmutexes):
+#     time.sleep(0.25)
+# print('Main thread exiting.')
