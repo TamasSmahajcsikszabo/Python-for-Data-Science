@@ -4,13 +4,14 @@
 # ~ undirectional channel with standard Python file call
 # ~ FIFO scheme, it allows synchronizing file execution
 # ~ anonymous (they live within processes, link parent and child in forks) or
-# ~ names (fifos, i.e. named files)
+# ~ named (fifos, i.e. named files)
 
 import threading
 import time
 import os
 import time
 import _thread
+import sys
 stdoutlock = _thread.allocate_lock()
 
 
@@ -91,19 +92,45 @@ def child(pipeout):
         childid = os.getpid()
         msg = (
             'Spam %03d from %d' %
-            (zzz, childid)).encode()  # note end of line!
+            (zzz, childid)).encode()
         os.write(pipeout, msg)
         zzz = (zzz+1) % 5
 
 def parent(pipein):
     while True:
         line = os.read(pipein, 32)
-        print(
-            'Parent %d got [%s] at %s' %
-            (os.getpid(), line, time.time()))
+        with stdoutlock:
+            print(
+                'Parent %d got [%s] at %s' %
+                (os.getpid(), line, time.time()))
 
 pipein, pipeout = os.pipe()
 threading.Thread(target = child, args=(pipeout, )).start()
 parent(pipein)
 
+##############################################################
+# bidirectional piping with two pipes ########################
+
+def spawn(prog, *args):
+    stdinFd = sys.stdin.fileno()
+    stdoutFd = 1
+
+    parentStin, childStout = os.pipe()
+    parentStout, childStin = os.pipe()
+    # copy this process
+    pid = os.fork()
+
+    if pid:
+        os.close(childStin)
+        os.close(childStout)
+        os.dup2(parentStin, stdinFd)
+        os.dup2(parentStout, stdoutFd)
+    else:
+        os.close(parentStin)
+        os.close(parentStout)
+        os.dup2(childStin, stdinFd)
+        os.dup2(childStout, stdoutFd)
+        args = (prog, ) + args
+        os.execvp(prog, args)
+        assert False, 'execvp failed!'
 

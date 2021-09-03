@@ -1,16 +1,22 @@
-import _thread, time, queue, threading
+import _thread
+import time
+import queue
+import threading
 
 numconsumers = 4
 numproducers = 4
 nummessages = 4
 
 safeprint = _thread.allocate_lock()
-dataQueue = queue.Queue() # the queue is assigned to a global variable, i.e.shared by all threads
+# the queue is assigned to a global variable, i.e.shared by all threads
+dataQueue = queue.Queue()
+
 
 def producer(idnum):
     for msg in range(nummessages):
         time.sleep(idnum)
         dataQueue.put('[producer id=%d, count=%d]' % (idnum, msg))
+
 
 def consumer(idnum):
     while True:
@@ -23,12 +29,13 @@ def consumer(idnum):
             with safeprint:
                 print('consumer', idnum, 'got=>', data)
 
+
 if __name__ == "__main__":
-    starttime= time.time()
+    starttime = time.time()
     for i in range(numconsumers):
         # _thread.start_new_thread(consumer, (i,))
         thread = threading.Thread(target=consumer, args=(i,))
-        thread.daemon = True # to make sure they don't prolong runtime
+        thread.daemon = True  # to make sure they don't prolong runtime
         thread.start()
 
     waitfor = []
@@ -38,8 +45,8 @@ if __name__ == "__main__":
         thread.start()
 
     # time.sleep((numproducers - 1) * nummessages + 1)
-    for thread in waitfor: thread.join()
-    endtime=time.time()
+    for thread in waitfor:
+        thread.join()
+    endtime = time.time()
     runtime = endtime - starttime
     print('Main thread exiting under {0} sec.'.format(round(runtime, 3)))
-
