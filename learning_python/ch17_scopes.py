@@ -1,3 +1,4 @@
+# scope depends on where variables are assigned = lexical scoping
 # namespace - each module is a self-contained namespace
 # scope = nested namespace
 # each module is a global scope, each function is a local
@@ -24,7 +25,7 @@ func(1)
 import builtins
 dir(builtins)
 # if overwritten a built-in, simple use: del name, which restores it
- 
+
 # global allows us to change global namespace objects
 # in other words, it affects out of the def
 # nonlocal does the same, but does not gp up until the level of the enclosing module, stays at the enclosing def

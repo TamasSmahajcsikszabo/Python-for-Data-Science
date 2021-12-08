@@ -7,10 +7,12 @@ def server():
     sock = socket(AF_INET, SOCK_STREAM)
     sock.bind(('', port))
     sock.listen(5)
+    print("Server is running and listening...")
     while True:
         conn, addr = sock.accept()
         data = conn.recv(1024)
         reply = 'server got: [{}]'.format(data)
+        print(reply)
         conn.send(reply.encode())
 
 def client(name):
@@ -27,4 +29,4 @@ if __name__ == "__main__":
     sthread.daemon = True
     sthread.start()
     for i in range(5):
-        Thread(target=client, args=('client{}'.format(i),)).start() 
+        Thread(target=client, args=('client{}'.format(i),)).start()
